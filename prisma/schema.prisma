@@ -1,0 +1,419 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator serverClient {
+  provider = "prisma-client-js"
+  output   = "../server/node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  GUARD
+  ADMIN
+}
+
+enum DeliveryStatus {
+  RECEIVED
+  STORED
+  READY_FOR_COLLECTION
+  HANDED_OVER
+  COLLECTED
+  RETURNED
+  CANCELLED
+}
+
+enum ParcelStatus {
+  RECEIVED
+  STORED
+  READY_FOR_COLLECTION
+  HANDED_OVER
+  COLLECTED
+  OVERDUE
+  RETURNED
+  CANCELLED
+}
+
+enum SlotStatus {
+  AVAILABLE
+  OCCUPIED
+  FULL
+  MAINTENANCE
+  ISSUE
+}
+
+enum StorageType {
+  RACK
+  OVERSIZED
+}
+
+enum VerificationMethod {
+  QR
+  OTP
+  MANUAL_OVERRIDE
+}
+
+enum NotificationChannel {
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+enum NotificationType {
+  ARRIVAL_NORMAL
+  PICKUP_QR
+  OTP_ALERT
+  COLLECTION_CONFIRMATION
+  REMINDER_24H
+  REMINDER_48H
+  ALERT_72H
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(STUDENT)
+  name         String
+  phone        String    @unique
+  avatar       String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  student      Student?
+  guard        Guard?
+  admin        Admin?
+  auditLogs    AuditLog[]
+
+  @@index([role])
+  @@index([phone])
+}
+
+model Student {
+  id              String         @id @default(uuid())
+  userId          String?        @unique
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  studentId       String         @unique // Roll / University ID e.g. CS2023-0142
+  name            String
+  phone           String         @unique
+  email           String         @unique
+  hostel          String?
+  room            String?
+  department      String?
+  year            Int?
+  isWhatsAppActive Boolean       @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  deliveries      Delivery[]
+  parcels         Parcel[]
+  pickups         Pickup[]
+  notifications   Notification[]
+  pickupTokens    PickupToken[]
+  otpTokens       OtpToken[]
+
+  @@index([phone])
+  @@index([studentId])
+  @@index([name])
+}
+
+model Guard {
+  id          String     @id @default(uuid())
+  userId      String     @unique
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeNumber String     @unique // Guard ID e.g. GD-001
+  name        String
+  phone       String
+  gateNumber  String     @default("Main Gate 1")
+  shift       String     @default("Morning (08:00 - 16:00)")
+  profilePhoto String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  deliveries  Delivery[]
+  pickups     Pickup[]
+
+  @@index([badgeNumber])
+}
+
+model Admin {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  phone      String
+  department String   @default("Campus Logistics Operations")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model DeliveryPartner {
+  id         String       @id @default(uuid())
+  name       String       @unique
+  slug       String       @unique
+  logoUrl    String?
+  color      String?      @default("#4F46E5")
+  isActive   Boolean      @default(true)
+  deliveries Delivery[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([slug])
+}
+
+model Delivery {
+  id                String          @id @default(uuid())
+  deliveryNumber    String          @unique // e.g. DEL-20260901-00042
+  studentId         String
+  student           Student         @relation(fields: [studentId], references: [id])
+  guardId           String
+  guard             Guard           @relation(fields: [guardId], references: [id])
+  deliveryPartnerId String
+  deliveryPartner   DeliveryPartner @relation(fields: [deliveryPartnerId], references: [id])
+  status            DeliveryStatus  @default(STORED)
+  trackingNumber    String?
+  notes             String?
+  receivedAt        DateTime        @default(now())
+  completedAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  parcel            Parcel?
+  pickups           Pickup[]
+  notifications     Notification[]
+
+  @@index([studentId])
+  @@index([guardId])
+  @@index([status])
+  @@index([receivedAt])
+}
+
+model Parcel {
+  id             String        @id @default(uuid())
+  parcelId       String        @unique // Authoritative unique format: CD-YYMMDD-XXXX (e.g. CD-260902-0001)
+  deliveryId     String        @unique
+  delivery       Delivery      @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student       @relation(fields: [studentId], references: [id])
+  storageSlotId      String?
+  storageSlot        StorageSlot?  @relation(fields: [storageSlotId], references: [id], onDelete: SetNull)
+  storageType        StorageType   @default(RACK)
+  oversizedReference String?       @unique
+  status             ParcelStatus  @default(STORED)
+  notes              String?
+  trackingNumber     String?
+  receivedById          String?
+  receivedByGuardId     String?
+  receivedAt            DateTime      @default(now())
+  handedOverById        String?
+  handedOverByGuardId   String?
+  handedOverAt          DateTime?
+  qrData                String?
+  qrToken               String?       @unique
+  qrExpiresAt           DateTime?
+  otpCode               String?
+  otpExpiresAt          DateTime?
+  collectedAt           DateTime?
+  reminderCount         Int           @default(0)
+  lastRemindedAt        DateTime?
+  whatsappMessageId     String?
+  whatsappStatus        String?       @default("QUEUED")
+  whatsappError         String?
+  whatsappLastUpdatedAt DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  pickups        Pickup[]
+  pickupTokens   PickupToken[]
+  otpTokens      OtpToken[]
+  notifications  Notification[]
+
+  @@index([parcelId])
+  @@index([studentId])
+  @@index([storageSlotId])
+  @@index([storageType])
+  @@index([oversizedReference])
+  @@index([status])
+  @@index([createdAt])
+  @@index([whatsappStatus])
+}
+
+model DailySequence {
+  datePrefix String   @id // e.g. "09-09"
+  lastSeq    Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
+model StorageRack {
+  id          String        @id @default(uuid())
+  name        String        @unique // Rack A, Rack B, Rack C
+  code        String        @unique // A, B, C
+  zone        String        @default("Main Gate Hub")
+  capacity    Int           @default(50)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  slots       StorageSlot[]
+
+  @@index([code])
+}
+
+model StorageSlot {
+  id          String      @id @default(uuid())
+  rackId      String
+  rack        StorageRack @relation(fields: [rackId], references: [id], onDelete: Cascade)
+  slotNumber  String      // e.g. A01, A02, B14
+  capacity    Int         @default(5) // Max parcels this slot can hold simultaneously
+  status      SlotStatus  @default(AVAILABLE)
+  updatedAt   DateTime    @updatedAt
+
+  parcels     Parcel[]
+
+  @@unique([rackId, slotNumber])
+  @@index([status])
+  @@index([rackId])
+}
+
+model Pickup {
+  id                 String             @id @default(uuid())
+  deliveryId         String
+  delivery           Delivery           @relation(fields: [deliveryId], references: [id])
+  parcelId           String
+  parcel             Parcel             @relation(fields: [parcelId], references: [id])
+  studentId          String
+  student            Student            @relation(fields: [studentId], references: [id])
+  guardId            String
+  guard              Guard              @relation(fields: [guardId], references: [id])
+  verificationMethod VerificationMethod @default(QR)
+  pickupLocation     String             @default("Main Gate Delivery Hub")
+  notes              String?
+  verifiedAt         DateTime           @default(now())
+  createdAt          DateTime           @default(now())
+
+  @@index([studentId])
+  @@index([guardId])
+  @@index([verifiedAt])
+}
+
+model PickupToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  parcelId  String
+  parcel    Parcel   @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model OtpToken {
+  id        String    @id @default(uuid())
+  otpCode   String
+  parcelId  String
+  parcel    Parcel    @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([otpCode, parcelId])
+  @@index([expiresAt])
+}
+
+model Notification {
+  id                String              @id @default(uuid())
+  studentId         String
+  student           Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  deliveryId        String?
+  delivery          Delivery?           @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+  parcelId          String?
+  parcel            Parcel?             @relation(fields: [parcelId], references: [id], onDelete: SetNull)
+  channel           NotificationChannel @default(WHATSAPP)
+  type              NotificationType
+  recipientPhone    String
+  messageBody       String
+  status            NotificationStatus  @default(QUEUED)
+  providerMessageId String?
+  errorMessage      String?
+  retryCount        Int                 @default(0)
+  sentAt            DateTime?
+  createdAt         DateTime            @default(now())
+
+  @@index([studentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WhatsAppMessage {
+  id           String           @id @default(uuid())
+  messageId    String?          @unique
+  fromPhone    String
+  toPhone      String
+  direction    MessageDirection @default(OUTBOUND)
+  messageType  String           @default("text") // text, interactive, template
+  payload      Json
+  rawPayload   Json?
+  status       String           @default("sent")
+  timestamp    DateTime         @default(now())
+
+  @@index([fromPhone])
+  @@index([toPhone])
+  @@index([timestamp])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  role      String?
+  action    String   // e.g. DELIVERY_RECEIVED, PARCEL_STORED, QR_VERIFIED, HANDOVER_COMPLETED, GUARD_ADDED, RACK_ADDED, etc.
+  entity    String   // Delivery, Parcel, StorageSlot, StorageRack, User, Guard, Pickup
+  entityId  String
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  timestamp DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([timestamp])
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+}

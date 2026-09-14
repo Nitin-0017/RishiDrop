@@ -16,7 +16,11 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const s = io('/', {
+    const targetUrl = import.meta.env.VITE_API_URL
+      ? import.meta.env.VITE_API_URL.replace(/\/+$/, '')
+      : '/';
+
+    const s = io(targetUrl, {
       transports: ['websocket', 'polling'],
     });
 

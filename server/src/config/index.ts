@@ -9,7 +9,7 @@ dotenv.config();
 export const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '5001', 10),
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrl: process.env.CLIENT_URL || 'https://rishi-drop.vercel.app',
   databaseUrl: process.env.DATABASE_URL || 'postgresql://nitinkumar@localhost:5432/campusdrop?schema=public',
   jwt: {
     secret: process.env.JWT_SECRET || 'campusdrop_jwt_super_secret_production_key_2026',

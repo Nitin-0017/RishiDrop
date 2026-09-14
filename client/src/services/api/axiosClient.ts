@@ -1,9 +1,8 @@
 import axios from 'axios';
 
-const rawApiUrl = import.meta.env.API_URL;
-const baseURL = rawApiUrl
-  ? `${rawApiUrl.replace(/\/+$/, '')}/api`
-  : '/api';
+const BACKEND_URL = 'https://rishidrop.onrender.com';
+const rawApiUrl = import.meta.env.VITE_API_URL || BACKEND_URL;
+const baseURL = `${rawApiUrl.replace(/\/+$/, '')}/api`;
 
 export const apiClient = axios.create({
   baseURL,

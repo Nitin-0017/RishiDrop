@@ -16,9 +16,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const targetUrl = import.meta.env.API_URL
-      ? import.meta.env.API_URL.replace(/\/+$/, '')
-      : '/';
+    const BACKEND_URL = 'https://rishidrop.onrender.com';
+    const targetUrl = (import.meta.env.VITE_API_URL || BACKEND_URL).replace(/\/+$/, '');
 
     const s = io(targetUrl, {
       transports: ['websocket', 'polling'],

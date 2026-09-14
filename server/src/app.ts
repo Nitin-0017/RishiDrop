@@ -15,7 +15,7 @@ app.use(helmet({
 }));
 
 // CORS Configuration
-app.use(cors({ origin: "*" }));
+app.use(cors({ origin: "*", credentials: true }));
 
 // Body Parsers
 app.use(express.json({ limit: '10mb' }));

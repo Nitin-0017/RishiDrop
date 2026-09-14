@@ -11,6 +11,7 @@ import {
   Mail,
   UserCheck
 } from 'lucide-react';
+import { getErrorMessage } from '../utils/error';
 
 export const LoginPage: React.FC = () => {
   const { login, isAuthenticated, user, logout } = useAuth();
@@ -51,7 +52,7 @@ export const LoginPage: React.FC = () => {
         setError('Student accounts access RishiDrop directly via WhatsApp.');
       }
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Incorrect email or password. Please try again.');
+      setError(getErrorMessage(err, 'Incorrect email or password. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }

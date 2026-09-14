@@ -7,10 +7,10 @@
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
     "build": "npm run build:server && npm run build:client",
-    "build:server": "cd server && npm run build",
+    "build:server": "cd server && npm run prisma:generate && npm run prisma:push && npm run prisma:seed && npm run build",
     "build:client": "cd client && npm run build",
     "start": "cd server && npm start",
-    "seed": "cd server && npx ts-node ../prisma/seed.ts",
+    "seed": "cd server && npm run prisma:seed",
     "test": "cd server && npm test"
   },
   "devDependencies": {

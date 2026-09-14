@@ -15,17 +15,7 @@ app.use(helmet({
 }));
 
 // CORS Configuration
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow local dev, Vite proxy, or production client URL
-    if (!origin || origin.includes('localhost') || origin === config.clientUrl) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Permissive for university pilot intranet
-    }
-  },
-  credentials: true,
-}));
+app.use(cors({ origin: "*" }));
 
 // Body Parsers
 app.use(express.json({ limit: '10mb' }));
